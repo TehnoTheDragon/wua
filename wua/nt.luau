@@ -1,5 +1,4 @@
 --!optimize 2
---!native
 local nt = {}
 
 @native function nt.i32(i32: number): i32
@@ -74,7 +73,7 @@ local nt = {}
     return setmetatable(self, meta)
 end
 
-function nt.f32(x: number): f32
+@native function nt.f32(x: number): f32
     local self = {value = x}
     local meta = {}
     function meta:__tostring(): string
