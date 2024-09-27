@@ -1,1 +1,5 @@
 sandbox.luau
+dummy.luau
+dummy.wasm
+dummy.wat
+run.bat
