@@ -1,6 +1,8 @@
 --!optimize 2
 --!native
 
+local types = require("types")
+
 @native local function table_insert<T>(t: {T}, v: T)
     t[if #t == 0 then 0 else #t + 1] = v
 end
@@ -8,17 +10,13 @@ end
 local parser = {}
 parser._parse_expression = require("expression_parser")
 
-export type WasmParser = {
-    parse: (self: WasmParser, wasm: buffer) -> WasmModule
-}
-
-function parser.new(): WasmParser
+function parser.new(): types.WasmParser
     local self = {}
     self.cursor = 0
     self.size = 0
     return (setmetatable(self, {
         __index = parser,
-    }) :: any) :: WasmParser
+    }) :: any) :: types.WasmParser
 end
 
 for _, datatype in {"u8", "u16", "u32", "i8", "i16", "i32", "f32", "f64"} do
@@ -95,7 +93,7 @@ end
 
 function parser:_parse_global_type(wasm: buffer)
     local value_type = self:_read_u8(wasm)
-    local mutability = self:_read_u8(wasm)
+    local mutability = self:_read_u8(wasm) == 1
     return {value_type = value_type, mutability = mutability}
 end
 
@@ -117,6 +115,7 @@ function parser:_parse_type_section(wasm: buffer, size: number)
     for _ = 1, count do
         local form = self:_read_u8(wasm)
         assert(form == 0x60, `invalid type section form: {form} expected: 0x60`)
+
         local params_count = self:_read_leb128_u32(wasm)
         local params = {}
         for _ = 1, params_count do
@@ -149,13 +148,13 @@ function parser:_parse_import_section(wasm: buffer, size: number)
         }
 
         if kind == 0 then
-            import.type_index = self:_read_leb128_u32(wasm)
+            import.value = self:_read_leb128_u32(wasm)
         elseif kind == 1 then
-            import.table_type = self:_parse_table_type(wasm)
+            import.value = self:_parse_table_type(wasm)
         elseif kind == 2 then
-            import.memory_type = self:_parse_limits(wasm)
+            import.value = self:_parse_limits(wasm)
         elseif kind == 3 then
-            import.global_type = self:_parse_global_type(wasm)
+            import.value = self:_parse_global_type(wasm)
         else
             error(`invalid import kind: {kind}`)
         end
@@ -289,7 +288,7 @@ function parser:_parse_data_section(wasm: buffer, size: number)
     return data_segments
 end
 
-function parser:_parse_module(wasm: buffer): WasmModule
+function parser:_parse_module(wasm: buffer): types.WasmModule
     local header = self:_parse_header(wasm)
     assert(header.magic == 0x6d736100, `invalid magic: {header.magic}`)
     assert(header.version == 1, `invalid version: {header.version}`)
@@ -344,57 +343,13 @@ function parser:_parse_module(wasm: buffer): WasmModule
         end
     end
 
-    return (module :: any) :: WasmModule
+    return (module :: any) :: types.WasmModule
 end
 
-function parser:parse(wasm: buffer): WasmModule
+function parser:parse(wasm: buffer): types.WasmModule
     self.size = buffer.len(wasm)
     self.cursor = 0
     return self:_parse_module(wasm)
 end
-
-type Instruction = {opcode: number, operand: any}
-export type WasmModule = {
-    size: number,
-    section: {
-        custom: any,
-        types: {param_types: {number}, result_types: {number}},
-        imports: {{
-            module: string,
-            name: string,
-            type: string,
-            type_index: number
-        }},
-        functions: {number},
-        tables: {{
-            element_type: number,
-            limits: {min: number, max: number?}
-        }},
-        memory: {{
-            limits: {min: number, max: number?}
-        }},
-        globals: {},
-        exports: {{
-            name: string,
-            kind: number,
-            index: number
-        }},
-        start: number,
-        elements: {{
-            table_index: number,
-            offset: {Instruction},
-            func_indices: {number}
-        }},
-        code: {{
-            locals: {number},
-            body: {Instruction}
-        }},
-        data: {{
-            memory_index: number,
-            offset: {Instruction},
-            data: {number}
-        }},
-    }
-}
 
 return parser

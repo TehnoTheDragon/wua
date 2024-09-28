@@ -1,17 +1,19 @@
 --!optimize 2
 --!native
+local types = require("types")
+
 local PAGE_SIZE = 65536
 
 local mem = {}
 
-function mem.new(initial_pages: number, max_pages: number): WasmMemory
+function mem.new(initial_pages: number, max_pages: number): types.WasmMemory
     return (setmetatable({
         _memory = buffer.create((initial_pages or 1) * PAGE_SIZE),
         _current_pages = initial_pages,
         _max_pages = max_pages,
     }, {
         __index = mem
-    }) :: any) :: WasmMemory
+    }) :: any) :: types.WasmMemory
 end
 
 function mem:grow(pages: number): boolean
@@ -44,17 +46,5 @@ end
 function mem:writeu32(offset: number, value: number)
     buffer.writeu32(self._memory, offset, value)
 end
-
-export type WasmMemory = {
-    _memory: buffer,
-    _current_pages: number,
-    _max_pages: number,
-
-    grow: (self: WasmMemory, pages: number) -> boolean,
-    readu8: (self: WasmMemory, offset: number) -> number,
-    readu32: (self: WasmMemory, offset: number) -> number,
-    writeu8: (self: WasmMemory, offset: number, value: number) -> (),
-    writeu32: (self: WasmMemory, offset: number, value: number) -> (),
-}
 
 return mem

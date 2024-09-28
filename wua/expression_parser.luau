@@ -1,7 +1,6 @@
 --!optimize 2
 --!native
-
-type ValueType = "none" | "u8" | "i8" | "u32" | "i32" | "u64" | "i64" | "f32" | "f64" | "leb128_u32" | "leb128_i32" | "leb128_u64" | "leb128_i64"
+local types = require("types")
 
 local valueTypeToReadFn = {
     none = nil,
@@ -20,7 +19,7 @@ local valueTypeToReadFn = {
 }
 
 local OPCODES = {}
-@native local function opcode(opcode: number, operandType: ValueType)
+@native local function opcode(opcode: number, operandType: types.ValueType)
     OPCODES[opcode] = function(self, wasm)
         local operand = if operandType == "none" then nil else self[valueTypeToReadFn[operandType]](self, wasm)
         return {

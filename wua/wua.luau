@@ -4,14 +4,11 @@ local runtime = require("runtime")
 local mem = require("mem")
 local stack = require("stack")
 local parser = require("parser")
-
-export type WasmModule = parser.WasmModule
-export type WasmStack = stack.WasmStack
-export type WasmMemory = mem.WasmMemory
+local types = require("types")
 
 local wua = {}
 
-function wua.new(wasm: buffer, memory: mem.WasmMemory): WasmInstance
+function wua.new(wasm: buffer, memory: types.WasmMemory): types.WasmInstance
     local module = parser.new():parse(wasm)
     local stack = stack.new()
 
@@ -19,22 +16,22 @@ function wua.new(wasm: buffer, memory: mem.WasmMemory): WasmInstance
         runtime = runtime.new(module, memory, stack),
     }, {
         __index = wua
-    }) :: any) :: WasmInstance
+    }) :: any) :: types.WasmInstance
 end
 
-function wua.from_string(wasm: string, memory: mem.WasmMemory): WasmInstance
+function wua.from_string(wasm: string, memory: types.WasmMemory): types.WasmInstance
     local b = buffer.create(#wasm)
     buffer.writestring(b, 0, wasm, #wasm)
     return wua.new(b, memory)
 end
 
-function wua.create_memory(initial_pages: number, max_pages: number): mem.WasmMemory
+function wua.create_memory(initial_pages: number, max_pages: number): types.WasmMemory
     return mem.new(initial_pages, max_pages)
 end
 
 function wua:execute_function(func_index: number)
-    local module: WasmModule = self.runtime.module
-    local stack: WasmStack = self.runtime.stack
+    local module: types.WasmModule = self.runtime.module
+    local stack: types.WasmStack = self.runtime.stack
 
     local func = module.section.functions[func_index]
     if not func then
@@ -44,8 +41,9 @@ function wua:execute_function(func_index: number)
     local func_type = module.section.types[func]
     local func_body = module.section.code[func]
 
+    print(#func_type.params, #func_body.locals)
     for i, v in func_body.locals do
-        stack:push(3)
+        stack:push(3, true)
     end
 
     local bytecode = func_body.body
@@ -57,12 +55,5 @@ function wua:run()
         self:execute_function(self.runtime.module.section.start)
     end
 end
-
-export type WasmInstance = {
-    runtime: runtime.WasmRuntime,
-
-    execute_function: (self: WasmInstance, func_index: number) -> (),
-    run: (self: WasmInstance) -> (),
-}
 
 return wua

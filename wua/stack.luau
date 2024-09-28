@@ -1,58 +1,85 @@
 --!optimize 2
 --!native
+local types = require("types")
+
 local stack = {}
 
-function stack.new(): WasmStack
+function stack.new(max_locals: number?): types.WasmStack
+    local max_locals = max_locals or 1000
     return (setmetatable({
         data = {},
-        top = 0
+        top = max_locals,
+        min_top = max_locals + 1,
+        top_locals = 0,
+        max_locals = max_locals,
     }, {
         __index = stack
-    }) :: any) :: WasmStack
+    }) :: any) :: types.WasmStack
 end
 
-function stack:push(value: number)
-    self.top += 1
-    self.data[self.top] = value
-end
-
-function stack:pop(): number
-    if self.top == 0 then
-        error(`stack underflow`, 2)
+function stack:push(value, locals: boolean?)
+    if locals then
+        if self.top_locals > self.max_locals then
+            error(`stack of locals is overflowed`, 2)
+        end
+        self.data[self.top_locals] = value
+        self.top_locals += 1
+    else
+        self.data[self.top] = value
+        self.top += 1
     end
-    self.top -= 1
-    return self.data[self.top + 1]
 end
 
-function stack:peek(): number
-    if self.top == 0 then
-        error(`stack is empty`, 2)
+function stack:pop(locals: boolean?)
+    if locals then
+        if self.top_locals <= 0 then
+            error(`stack of locals is underflowed`, 2)
+        end
+        self.top_locals -= 1
+        local value = self.data[self.top_locals]
+        return value
+    else
+        if self.top < self.min_top then
+            error(`stack underflow`, 2)
+        end
+        self.top -= 1
+        local value = self.data[self.top]
+        return value
     end
-    return self.data[self.top]
 end
 
-function stack:read(index: number): number
-    if index > self.top then
+function stack:peek(locals: boolean?)
+    if locals then
+        if self.top_locals == 0 then
+            error(`stack of locals is empty`, 2)
+        end
+        return self.data[self.top_locals - 1]
+    else
+        if self.top < self.min_top then
+            error(`stack is empty`, 2)
+        end
+        return self.data[self.top - 1]
+    end
+end
+
+function stack:get(index: number)
+    if index > self.top or index < 0 then
         error(`index out of bounds`, 2)
-    elseif index < 0 then
-        error(`negative index`, 2)
     end
     return self.data[index]
+end
+
+function stack:set(index: number, value)
+    if index > self.top or index < 0 then
+        error(`index out of bounds`, 2)
+    end
+    self.data[index] = value
 end
 
 function stack:clear()
     self.data = {}
     self.top = 0
+    self.top_locals = 0
 end
-
-export type WasmStack = {
-    data: {number},
-    top: number,
-
-    push: (self: WasmStack, value: number) -> (),
-    pop: (self: WasmStack) -> number,
-    peek: (self: WasmStack) -> number,
-    clear: (self: WasmStack) -> (),
-}
 
 return stack
