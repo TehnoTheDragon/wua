@@ -16,6 +16,8 @@ export type ValueType = "none"
 
 export type Instruction = {opcode: number, operand: any}
 export type Limits = {min: number, max: number?}
+export type WasmHeader = {magic: number, version: number}
+export type WasmSection = {id: number, size: number}
 
 export type TypeSectionItem = {params: {number}, results: {number}}
 export type ImportSectionItem = {module: string, name: string, kind: number, value: number | TableSectionItem | Limits | GlobalSectionItem}
@@ -49,7 +51,30 @@ export type WasmModule = {
     }
 }
 export type WasmParser = {
-    parse: (self: WasmParser, wasm: buffer) -> WasmModule
+    parse: (self: WasmParser, wasm: buffer) -> WasmModule,
+
+    _read_leb128_u32: (self: WasmParser, wasm: buffer) -> number,
+    _read_leb128_i32: (self: WasmParser, wasm: buffer) -> number,
+    _read_bytes: (self: WasmParser, wasm: buffer, size: number) -> {number},
+    _read_string: (self: WasmParser, wasm: buffer) -> string,
+    _parse_limits: (self: WasmParser, wasm: buffer) -> Limits,
+    _parse_table_type: (self: WasmParser, wasm: buffer) -> {TableSectionItem},
+    _parse_global_type: (self: WasmParser, wasm: buffer) -> {GlobalSectionItem},
+    _parse_header: (self: WasmParser, wasm: buffer) -> WasmHeader,
+    _parse_section: (self: WasmParser, wasm: buffer) -> WasmSection,
+    _parse_custom_section: (self: WasmParser, wasm: buffer, size: number) -> {any},
+    _parse_type_section: (self: WasmParser, wasm: buffer, size: number) -> {TypeSectionItem},
+    _parse_import_section: (self: WasmParser, wasm: buffer, size: number) -> {ImportSectionItem},
+    _parse_function_section: (self: WasmParser, wasm: buffer, size: number) -> {FunctionSectionItem},
+    _parse_table_section: (self: WasmParser, wasm: buffer, size: number) -> {TableSectionItem},
+    _parse_memory_section: (self: WasmParser, wasm: buffer, size: number) -> {MemorySectionItem},
+    _parse_global_section: (self: WasmParser, wasm: buffer, size: number) -> {GlobalSectionItem},
+    _parse_export_section: (self: WasmParser, wasm: buffer, size: number) -> {ExportSectionItem},
+    _parse_start_section: (self: WasmParser, wasm: buffer, size: number) -> StartSectionItem,
+    _parse_element_section: (self: WasmParser, wasm: buffer, size: number) -> {ElementSectionItem},
+    _parse_code_section: (self: WasmParser, wasm: buffer, size: number) -> {CodeSectionItem},
+    _parse_data_section: (self: WasmParser, wasm: buffer, size: number) -> {DataSectionItem},
+    _parse_module: (self: WasmParser, wasm: buffer) -> WasmModule,
 }
 export type WasmMemory = {
     _memory: buffer,

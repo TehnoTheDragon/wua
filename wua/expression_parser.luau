@@ -29,16 +29,32 @@ local OPCODES = {}
     end
 end
 
-@native local function opcode_complex(opcode: number, fn: (self: any, wasm: buffer) -> any)
+@native local function opcode_complex(opcode: number, fn: (self: types.WasmParser, wasm: buffer) -> any)
     OPCODES[opcode] = fn
 end
 
+@native local function opcode_from_to(from: number, to: number, operandType: types.ValueType)
+    for i = from, to do
+        opcode(i, operandType)
+    end
+end
+
+-- control instructions
+opcode(0x00, "none") -- unreachable
+opcode(0x01, "none") -- nop
+-- | block |
+-- | loop |
+-- | if |
+-- | else |
+opcode(0x0C, "leb128_u32") -- unconditional branch
+opcode(0x0D, "leb128_u32") -- conditional branch
+-- | table branch |
+opcode(0x0F, "none") -- return
+opcode(0x10, "leb128_u32") -- call
+-- | call indirect |
+
 -- variable instructions
-opcode(0x20, "leb128_u32")
-opcode(0x21, "leb128_u32")
-opcode(0x22, "leb128_u32")
-opcode(0x23, "leb128_u32")
-opcode(0x24, "leb128_u32")
+opcode_from_to(0x20, 0x24, "leb128_u32")
 
 -- numeric instructions
 opcode(0x41, "leb128_i32")
@@ -46,7 +62,35 @@ opcode(0x42, "leb128_i64")
 opcode(0x43, "f32")
 opcode(0x44, "f64")
 
+opcode_from_to(0x45, 0x4F, "i32")
+opcode_from_to(0x50, 0x5A, "i64")
+opcode_from_to(0x5B, 0x60, "f32")
+opcode_from_to(0x61, 0x66, "f64")
+opcode_from_to(0x67, 0x78, "i32")
+opcode_from_to(0x79, 0x8A, "i64")
+opcode_from_to(0x8B, 0x98, "f32")
+opcode_from_to(0x99, 0xA6, "f64")
+opcode_from_to(0xA7, 0xAB, "i32")
+opcode_from_to(0xAC, 0xB1, "i64")
+opcode_from_to(0xB2, 0xB6, "f32")
+opcode_from_to(0xB7, 0xBB, "f64")
+
+opcode(0xBC, "i32")
+opcode(0xBD, "i64")
+opcode(0xBE, "f32")
+opcode(0xBF, "f64")
+
+opcode(0xC0, "i32")
+opcode(0xC1, "i32")
+opcode(0xC2, "i64")
+opcode(0xC3, "i64")
+opcode(0xC4, "i64")
+
 opcode(0x6A, "none")
+
+opcode_complex(0x08, function(self: types.WasmParser, wasm: buffer): any
+    return {opcode = 0x08, operand = self:_read_leb128_u32(wasm)}
+end)
 
 return function(self, wasm: buffer)
     local opcode = self:_read_u8(wasm)

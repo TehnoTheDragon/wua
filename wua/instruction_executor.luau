@@ -3,9 +3,20 @@
 local types = require("types")
 
 local OPCODES = {}
-@native local function opcode<T>(opcode: number, fn: (self: any, operand: T) -> ())
+@native local function opcode<T>(opcode: number, fn: (self: types.WasmRuntime, operand: T) -> ())
     OPCODES[opcode] = fn
 end
+
+-- control instructions
+opcode(0x00, function(self: types.WasmRuntime)
+    error(`unreachable`, 2)
+end)
+opcode(0x01, function(self: types.WasmRuntime)
+    -- nop
+end)
+opcode(0x10, function(self: types.WasmRuntime, operand: number)
+    self.pc = operand
+end)
 
 -- variable instructions
 opcode(0x20, function(self: types.WasmRuntime, operand: number)
